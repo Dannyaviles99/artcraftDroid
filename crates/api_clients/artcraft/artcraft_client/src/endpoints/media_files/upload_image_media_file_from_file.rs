@@ -12,6 +12,7 @@ use enums::common::generation_provider::GenerationProvider;
 use uuid_utils::uuid::generate_random_uuid;
 use log::debug;
 use reqwest::multipart::{Form, Part};
+use tokio_util::io::ReaderStream;
 use serde_derive::{Deserialize, Serialize};
 use std::path::Path;
 use tokens::tokens::batch_generations::BatchGenerationToken;
@@ -69,13 +70,22 @@ pub async fn upload_image_media_file_from_file_with_idempotency_token<P: AsRef<P
       .build()
       .map_err(|err| StorytellerError::Client(ClientError::from(err)))?;
 
-  let file_bytes = std::fs::read(args.path.as_ref())
-      .map_err(|err| StorytellerError::Client(ClientError::from(err)))?;
+  // Stream from disk instead of buffering the entire media file in memory. This is also
+  // the upload shape needed by Android's SAF bridge after a document has been staged
+  // into app-private cache storage.
   let file_name = args.path.as_ref().file_name()
       .and_then(|n| n.to_str()).unwrap_or("file").to_string();
+  let file = tokio::fs::File::open(args.path.as_ref()).await
+      .map_err(|err| StorytellerError::Client(ClientError::from(err)))?;
+  let file_len = file.metadata().await
+      .map_err(|err| StorytellerError::Client(ClientError::from(err)))?.len();
+  let part = Part::stream_with_length(
+      reqwest::Body::wrap_stream(ReaderStream::new(file)),
+      file_len,
+  ).file_name(file_name);
   let mut form = Form::new()
       .text("uuid_idempotency_token", idempotency_token.to_string())
-      .part("file", Part::bytes(file_bytes).file_name(file_name));
+      .part("file", part);
 
   if args.is_intermediate_system_file {
     form = form.text("is_intermediate_system_file", "true");
