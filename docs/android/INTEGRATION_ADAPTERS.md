@@ -114,3 +114,16 @@ process death. Pending operations should fail cleanly if the activity is no long
 - URI permission failures produce actionable errors.
 - No credentials are stored in shared storage or logs.
 - A feature is marked complete only after an end-to-end test through the real ArtCraft page.
+
+
+## Implemented groundwork (2026-10-31)
+
+The ArtCraft image and video file-upload endpoints now use asynchronous file streaming:
+`tokio::fs::File` + `tokio_util::io::ReaderStream` + reqwest multipart
+`Part::stream_with_length`. This removes the previous `std::fs::read` full-file allocation
+from these two upload paths. It reduces peak memory pressure for large media on desktop and
+provides a better base for Android's SAF-to-private-cache staging flow.
+
+This is **not yet SAF support**: current UI callers still supply `PathBuf`, and Android
+document URIs are not yet selected or opened by a native Activity Result bridge. The change
+has been committed but has not yet been compiled or exercised on an Android device.
