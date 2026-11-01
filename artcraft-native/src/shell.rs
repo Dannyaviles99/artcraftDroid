@@ -123,10 +123,11 @@ const SECTIONS: [(&str, &[Page]); 3] = [("Create", &[Page::CreateImage, Page::Cr
 pub fn mobile_nav(ui: &mut Ui, page: Page) -> Option<ShellAction> {
   let mut action = None;
   let pages = [Page::CreateImage, Page::CreateVideo, Page::CreateAudio, Page::Library];
+  let page_count = pages.len();
   let rect = ui.max_rect();
   let mut row = ui.new_child(egui::UiBuilder::new().max_rect(rect.shrink2(vec2(6.0, 3.0))).layout(egui::Layout::left_to_right(egui::Align::Center)));
-  for p in pages {
-    let width = row.available_width() / (pages.len() - pages.iter().position(|item| *item == p).unwrap_or(0)) as f32;
+  for (index, p) in pages.iter().copied().enumerate() {
+    let width = row.available_width() / (page_count - index) as f32;
     let (cell, response) = row.allocate_exact_size(vec2(width, row.available_height()), Sense::click());
     let selected = page == p;
     if selected || response.hovered() {
