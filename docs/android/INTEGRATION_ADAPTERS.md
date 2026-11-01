@@ -167,3 +167,23 @@ build.
 6. Add an ARM64 Android CI build and then test on the Helio G81 / 4 GB reference device.
 
 No Android APK or successful Android compilation is claimed at this stage.
+
+
+### Confirmed Android host versions
+
+The checked-in lockfile resolves eframe/egui to **0.36.2**, winit to **0.30.13**, and
+android-activity to **0.6.1**. Winit 0.30 uses the `android-activity` glue crate; the
+application entry point receives an `AndroidApp` and passes it into Winit's event loop.
+Eframe 0.36's `NativeOptions` has an Android-only `android_app` field for this purpose.
+The Android glue version must remain aligned with the one used by Winit; do not add a second,
+independently versioned `android-activity` dependency.
+
+The native host needs a shared-library packaging path (`cdylib`) and an Android launcher
+configuration. This is a separate entry point from the current desktop `main()`; it should
+construct the same `ArtcraftApp` and call `eframe::run_native` with the Android app handle.
+The app modules should be moved behind a reusable library crate so the desktop binary and
+Android shared-library entry point can share the exact same Rust application code.
+
+References checked:
+- winit 0.30 Android platform docs: https://docs.rs/winit/0.30.13/winit/platform/android/
+- eframe 0.36.2 docs: https://docs.rs/eframe/0.36.2/eframe/
