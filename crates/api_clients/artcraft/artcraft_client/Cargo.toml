@@ -32,7 +32,9 @@ anyhow.workspace = true
 chrono.workspace = true
 cookie.workspace = true
 log.workspace = true
-reqwest = { workspace = true, features = ["multipart", "gzip"] }
+reqwest = { workspace = true, features = ["multipart", "gzip", "stream"] }
+tokio = { workspace = true, features = ["fs", "io-util"] }
+tokio-util = { workspace = true, features = ["io"] }
 url.workspace = true
 
 # Serialization
