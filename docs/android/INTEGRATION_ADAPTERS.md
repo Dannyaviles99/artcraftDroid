@@ -127,3 +127,43 @@ provides a better base for Android's SAF-to-private-cache staging flow.
 This is **not yet SAF support**: current UI callers still supply `PathBuf`, and Android
 document URIs are not yet selected or opened by a native Activity Result bridge. The change
 has been committed but has not yet been compiled or exercised on an Android device.
+
+
+## Verified source-level blockers (2026-10-31)
+
+The following call sites were checked in the working branch and must be routed through the
+platform boundary before an Android build can be considered usable:
+
+| Area | Current desktop dependency / assumption | Android work required |
+|---|---|---|
+| Entry point | `main.rs` calls `eframe::run_native` | Add the eframe/winit Android activity entry point and package host |
+| File picker | `pages/common.rs::pick_files` returns `PathBuf` via `rfd` | Async SAF picker and URI-backed media source |
+| Reference preview | `pages/common.rs::upload_path` reads the whole image with `std::fs::read` | Bounded thumbnail decode/cache; do not load original-sized files wholesale on 4 GB devices |
+| Character image | `CharactersAction::Upload` carries `PathBuf` | Use the same selected-media abstraction as reference uploads |
+| Downloads | `app.rs::download` uses `rfd` save-file/folder dialogs | SAF `ACTION_CREATE_DOCUMENT` / tree picker and stream download to URI |
+| External open | `app.rs` calls `open::that` | Android `ACTION_VIEW` intent adapter |
+| Session storage | `backend/session.rs::data_root` assumes user home and `~/Artcraft` | App-private filesDir and cacheDir |
+| Audio | `backend/audio.rs` uses `rodio` | Verify Android output backend or add Oboe/AAudio implementation |
+| Provider login | `overlays/providers.rs` uses WRY and webview cookie capture | Android-compatible, provider-compliant auth flow; no cookie scraping |
+| Clipboard | `arboard` is a desktop dependency | Android ClipboardManager adapter |
+
+The current native crate also enables desktop-oriented eframe features (`wayland`, `x11`)
+and declares desktop integrations (`wry`, `rfd`, `open`, `arboard`, `directories`)
+unconditionally. These must be split into target-specific dependencies/features only after
+the Android eframe/winit host and required platform features are confirmed for the pinned
+versions. Do not simply remove the desktop features: that would regress the existing Linux
+build.
+
+### Immediate implementation sequence
+
+1. Establish the pinned eframe 0.36 Android host/Gradle packaging path and confirm its exact
+   activity callback API.
+2. Introduce a platform module and selected-media type without changing desktop behavior.
+3. Wire Android SAF selection and URI metadata/permission handling through the activity bridge.
+4. Stage SAF streams into app cache with bounded I/O for the existing path-based upload APIs;
+   remove staging files after completion or cancellation.
+5. Convert character-image upload, downloads, external URL launching, app storage, clipboard,
+   audio, and provider sign-in to platform adapters.
+6. Add an ARM64 Android CI build and then test on the Helio G81 / 4 GB reference device.
+
+No Android APK or successful Android compilation is claimed at this stage.
