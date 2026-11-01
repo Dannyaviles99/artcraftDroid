@@ -118,6 +118,36 @@ impl Page {
 
 const SECTIONS: [(&str, &[Page]); 3] = [("Create", &[Page::CreateImage, Page::CreateVideo, Page::CreateAudio, Page::Object3d, Page::World3d]), ("Studio", &[Page::EditImage, Page::Stage3d, Page::VideoEditor, Page::RemoveBackground, Page::FrameExtractor]), ("Assets", &[Page::Library])];
 
+/// Compact bottom navigation for phone-sized windows. Keeps the four native workflows
+/// reachable without squeezing a desktop sidebar into a narrow viewport.
+pub fn mobile_nav(ui: &mut Ui, page: Page) -> Option<ShellAction> {
+  let mut action = None;
+  let pages = [Page::CreateImage, Page::CreateVideo, Page::CreateAudio, Page::Library];
+  let rect = ui.max_rect();
+  let mut row = ui.new_child(egui::UiBuilder::new().max_rect(rect.shrink2(vec2(6.0, 3.0))).layout(egui::Layout::left_to_right(egui::Align::Center)));
+  for p in pages {
+    let width = row.available_width() / (pages.len() - pages.iter().position(|item| *item == p).unwrap_or(0)) as f32;
+    let (cell, response) = row.allocate_exact_size(vec2(width, row.available_height()), Sense::click());
+    let selected = page == p;
+    if selected || response.hovered() {
+      row.painter().rect_filled(cell.shrink2(vec2(3.0, 1.0)), theme::RADIUS, if selected { theme::WASH_SELECTED } else { theme::WASH });
+    }
+    let ink = if selected { Color32::WHITE } else { theme::SIDEBAR_INK };
+    icons::paint(row.painter(), Rect::from_center_size(pos2(cell.center().x, cell.center().y - 8.0), vec2(17.0, 17.0)), p.icon(), ink);
+    row.painter().text(pos2(cell.center().x, cell.center().y + 12.0), Align2::CENTER_CENTER, match p {
+      Page::CreateImage => "Image",
+      Page::CreateVideo => "Video",
+      Page::CreateAudio => "Audio",
+      Page::Library => "Library",
+      _ => unreachable!(),
+    }, FontId::new(10.5, if selected { theme::medium() } else { egui::FontFamily::Proportional }), ink);
+    if response.clicked() {
+      action = Some(ShellAction::Navigate(p));
+    }
+  }
+  action
+}
+
 /// Who's signed in, for the sidebar and top bar.
 pub struct Account<'a> {
   pub username: Option<&'a str>,
