@@ -22,6 +22,14 @@ Target: one ArtCraft codebase with a touch-first phone layout and a desktop-styl
 4. Treat 4 GB RAM as a constrained target: bounded image decoding, thumbnail and texture caches, limited concurrent previews, streaming file IO, and graceful memory-pressure handling.
 5. Do not claim support for stylus pressure/tilt unless the device actually reports those values.
 
+## Work completed on the foundation branch
+
+- Added a compact bottom navigation for the four native workflows (Image, Video, Audio, Library) when the app window is narrower than 720 logical points.
+- The desktop sidebar remains in use on wider windows; the same `ArtcraftApp` state and page implementations are used in both layouts.
+- The content panel now preserves its outer inset when the phone layout hides the sidebar.
+
+This is the first responsive-layout slice, not a complete mobile redesign. The create forms, dialogs, library picker, and media lightbox still need narrow-screen audits and touch-target adjustments.
+
 ## Main engineering blockers
 
 ### 1. Android application entry point
@@ -55,7 +63,7 @@ Keep a single application state and shared workflows. Add a layout policy select
 
 ## Recommended implementation sequence
 
-1. **Build inventory:** identify every desktop-only API used by `artcraft-native` and its transitive internal crates.
+1. **Build inventory:** identify every desktop-only API used by `artcraft-native` and its transitive internal crates. Initial source scan confirms WRY-based Midjourney login, `rfd` dialogs, `open` URL/folder launching, desktop home/cache paths, and `rodio` playback need platform handling.
 2. **Platform boundary:** define narrow interfaces for document access, clipboard, external links, app paths, audio, and provider sign-in.
 3. **Android entry point:** enable the documented Android eframe/winit backend for the locked dependency versions; add Android manifest and Gradle packaging.
 4. **First launch:** build and install a minimal ARM64 app that starts the real `ArtcraftApp`, not a placeholder.
