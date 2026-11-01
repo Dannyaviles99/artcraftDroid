@@ -573,12 +573,17 @@ impl ArtcraftApp {
   fn shell(&mut self, ui: &mut Ui) {
     let account = Account { username: self.user.as_ref().map(|u| u.username.as_str()), display_name: self.user.as_ref().map(|u| u.display_name.as_str()).filter(|n| !n.is_empty()), credits: self.credits };
     let mark = creator_icons::texture(ui.ctx(), "artcraft");
+    let compact = ui.available_width() < 720.0;
     let mut actions = Vec::new();
     let chrome = egui::Frame::NONE.fill(theme::CHROME);
     egui::Panel::top("titlebar").exact_size(shell::TITLEBAR_HEIGHT).resizable(false).frame(chrome).show(ui, |ui| {
       actions.extend(shell::titlebar(ui, &account, &mark));
     });
-    if self.sidebar_open {
+    if compact {
+      egui::Panel::bottom("mobile-navigation").exact_size(64.0).resizable(false).frame(chrome).show(ui, |ui| {
+        actions.extend(shell::mobile_nav(ui, self.page));
+      });
+    } else if self.sidebar_open {
       egui::Panel::left("sidebar").exact_size(shell::SIDEBAR_WIDTH).resizable(false).frame(chrome).show(ui, |ui| {
         actions.extend(shell::sidebar(ui, self.page, &account));
       });
@@ -614,8 +619,9 @@ impl ArtcraftApp {
   /// and the page below.
   fn page_ui(&mut self, ui: &mut Ui) {
     let ctx = ui.ctx().clone();
+    let compact = ui.available_width() < 720.0;
     let gap = shell::PANEL_GAP;
-    let margin = egui::Margin { left: if self.sidebar_open { 0 } else { gap }, right: gap, top: 0, bottom: gap };
+    let margin = egui::Margin { left: if self.sidebar_open && !compact { 0 } else { gap }, right: gap, top: 0, bottom: gap };
     // Only feeds with videos offer the preview autoplay toggle.
     let toggles = self.page_feed().map(|key| FeedToggles { mode: self.view_mode, selecting: self.feed(key).selecting, autoplay: matches!(key, FeedKey::Video | FeedKey::Library).then_some(self.autoplay) });
     let mut header_action = None;
