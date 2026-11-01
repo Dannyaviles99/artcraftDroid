@@ -10,6 +10,7 @@ use chrono::{DateTime, Utc};
 use uuid_utils::uuid::generate_random_uuid;
 use log::debug;
 use reqwest::multipart::{Form, Part};
+use tokio_util::io::ReaderStream;
 use serde_derive::{Deserialize, Serialize};
 use std::path::Path;
 use tokens::tokens::batch_generations::BatchGenerationToken;
@@ -61,12 +62,18 @@ pub async fn upload_video_media_file_from_file<P: AsRef<Path>>(
   let client = storyteller_client_builder(args.api_host)
       .build()?;
 
-  let file_bytes = std::fs::read(args.path.as_ref())?;
+  // Stream large videos from disk rather than allocating a second full-size buffer.
   let file_name = args.path.as_ref().file_name()
       .and_then(|n| n.to_str()).unwrap_or("file").to_string();
+  let file = tokio::fs::File::open(args.path.as_ref()).await?;
+  let file_len = file.metadata().await?.len();
+  let part = Part::stream_with_length(
+      reqwest::Body::wrap_stream(ReaderStream::new(file)),
+      file_len,
+  ).file_name(file_name);
   let mut form = Form::new()
       .text("uuid_idempotency_token", generate_random_uuid())
-      .part("file", Part::bytes(file_bytes).file_name(file_name));
+      .part("file", part);
 
   if let Some(prompt_token) = &args.maybe_prompt_token {
     form = form.text("maybe_prompt_token", prompt_token.to_string());
